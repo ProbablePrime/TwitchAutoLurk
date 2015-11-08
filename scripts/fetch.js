@@ -14,7 +14,6 @@ function fetch_feed(storage) {
 }
 
 function display_stories(streams) {
-  mixpanel.track("Popup: Show Popup");
   for (var i = streams.length - 1; i >= 0; i--) {
     var json = streams[i]
     var $user = $('li[data-username="'+json.username+'"]');
@@ -49,10 +48,6 @@ $(document).ready(function() {
         chrome.storage.sync.set({'twitchStreams': storage.twitchStreams}, function() {
           fetch_feed(storage);
           $("#username").val('');
-          mixpanel.track("Popup: Add Streamer");
-          mixpanel.people.set({
-            "streamersFollow": storage.twitchStreams.length
-          });
         });
       });
     }
@@ -69,17 +64,12 @@ $(document).ready(function() {
       }
       chrome.storage.sync.set({'twitchStreams': storage.twitchStreams}, function() {
         $parent.remove();
-        mixpanel.track("Popup: Remove Streamer");
-        mixpanel.people.set({
-          "streamersFollow": storage.twitchStreams.length
-        });
       });
     });
   });
 
   $('body').on('click', 'a', function(){
     chrome.tabs.create({url: $(this).attr('href')});
-    mixpanel.track("Popup: View Stream");
     return false;
   });
 
@@ -91,11 +81,8 @@ chrome.storage.sync.get('userid', function(items) {
         useToken(userid);
     }
     function useToken(userid) {
-      mixpanel.identify(userid);
+      
       chrome.storage.sync.get('twitchStreams', function(storage) {
-        mixpanel.people.set({
-          "streamersFollow": storage.twitchStreams.length
-        });
       });
     }
 });

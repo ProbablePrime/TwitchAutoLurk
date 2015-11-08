@@ -1,5 +1,5 @@
 var cache = {};
-var notifications = {};
+var goBackTo;
 
 function fetch_feed(usernames, callback) {
   var usernamesString = "";
@@ -17,7 +17,7 @@ function fetch_feed(usernames, callback) {
         var status = cache[stream.channel.name];
 
         if(!status){
-          createNotification(stream);
+          prepareToLurk(stream);
         }
 
         cache[stream.username] = true;
@@ -39,51 +39,45 @@ function fetch_feed(usernames, callback) {
   }
 }
 
-function createNotification (stream) {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', "http://friss.me/dev/twitch/imagegrabber.php?url="+stream.preview.large, true);
-  xhr.responseType = 'blob';
-  xhr.onload = function(e) {
-    var opt = {
-      type: "image",
-      title: stream.channel.display_name+" playing "+stream.game,
-      message: stream.channel.status,
-      iconUrl: 'images/icon_128.png',
-      imageUrl: window.URL.createObjectURL(this.response),
-      buttons: [
-        {
-          "title": "View Stream"
+function prepareToLurk(stream) {
+    chrome.tabs.query({url:'*://*.twitch.tv/'+stream.username},function(tabs){
+        if(tabs.length === 0) {
+            autoLurk(stream);
+        } else {
+            //already on that strim
         }
-      ]
-    }
-
-    chrome.notifications.create(stream.username, opt, function(id){notifications[id]=stream.username;});
-    mixpanel.track("Notification: Create Notification");
-  };
-
-  xhr.send();
+    });
 }
 
+function autoLurk(stream) {
+    chrome.tabs.query({active:true},function(tabs){
+        goBackTo = tabs[0].id;
+        var newTab = {
+            url:'http://twitch.tv/'+stream.username,
+            active:true
+        };
+        chrome.tabs.create(newTab, onTabCreate);
+    });
+}
 
-function handleClick (id) {
-  var url = "http://twitch.tv/"+notifications[id];
-  chrome.tabs.create({ url: url });
-  mixpanel.track("Notification: View Stream");
+function onTabCreate(tab) {
+    chrome.tabs.update(tab.id,{muted:true});
+    // setTimeout(1000,function(){})
+    chrome.tabs.update(goBackTo,{active:true});
 }
 
 
 function onRequest(request, sender, callback) {
-  if (request.action == 'fetch_feed') {
+    if (request.action == 'fetch_feed') {
         fetch_feed(request.usernames, callback);
       }
 }
 
 // Wire up the listener.
 chrome.extension.onRequest.addListener(onRequest);
-chrome.notifications.onClicked.addListener(handleClick);
-chrome.notifications.onButtonClicked.addListener(handleClick)
 
-var pollInterval = 1000 * 60; // 1 minute, in milliseconds
+
+var pollInterval = 1000 * 10; // 1 minute, in milliseconds
 
 function poller(){
     chrome.storage.sync.get('twitchStreams', function(storage){
@@ -119,11 +113,5 @@ chrome.storage.sync.get('userid', function(items) {
         });
     }
     function useToken(userid) {
-      mixpanel.identify(userid);
-      chrome.storage.sync.get('twitchStreams', function(storage) {
-        mixpanel.people.set({
-          "streamersFollow": storage.twitchStreams.length
-        });
-      });
     }
 });

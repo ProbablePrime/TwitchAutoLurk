@@ -1,20 +1,19 @@
 {
-  "name": "Twitch Stream Notifier",
+  "name": "Twitch Stream Auto Lurker",
   "version": "0.5",
   "manifest_version": 2,
-  "description": "See when streamers go online!",
+  "description": "Open a new muted tab when streamers you want to support goes live",
   "icons": {
     "16": "images/icon.png",
     "48": "images/icon_48.png",
     "128": "images/icon_128.png"
   },
-  "homepage_url": "https://github.com/Friss/TwitchNotifier",
+  "homepage_url": "https://github.com/rfox90/TwitchAutoLurk",
   "background": {
     "page": "background.html"
   },
   "permissions": [
     "https://api.twitch.tv/*",
-    "notifications",
     "storage",
     "background",
     "tabs"
