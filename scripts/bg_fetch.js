@@ -1,4 +1,4 @@
-var status = {};
+var streamStatus = {};
 var goBackTo;
 
 
@@ -6,7 +6,7 @@ function fetch_feed(usernames, callback) {
     var usernamesString = "";
     for (var i = usernames.length - 1; i >= 0; i--) {
         usernamesString += usernames[i]+",";
-        status[usernames[i]] = false;
+        streamStatus[usernames[i]] = false;
     }
     if(usernamesString !== ""){
         $.getJSON( "https://api.twitch.tv/kraken/streams?offset=0&limit=500&channel="+usernamesString).done(
@@ -19,13 +19,14 @@ function fetch_feed(usernames, callback) {
 
                     prepareToLurk(stream);
 
-                    status[stream.username] = true;
+                    streamStatus[stream.username] = true;
                 }
                 if (usernames.length){
                     var username;
                     for (var i = usernames.length - 1; i >= 0; i--) {
                         username = usernames[i];
-                        if(! status[usernames[i]]) {
+                        console.log(streamStatus[username]);
+                        if(! streamStatus[username]) {
                             findAndCloseStreamer(username)
                         }
                     }
@@ -39,7 +40,6 @@ function fetch_feed(usernames, callback) {
 function findAndCloseStreamer(username) {
 	console.log('finding and closing '+username);
     chrome.tabs.query({url:'*://*.twitch.tv/'+username},function(tabs){
-    	console.log(tabs);
         var tab;
         if(tabs.length <= 0) {
             return;
