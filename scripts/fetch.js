@@ -72,17 +72,6 @@ $(document).ready(function() {
     chrome.tabs.create({url: $(this).attr('href')});
     return false;
   });
-
 });
 
-chrome.storage.sync.get('userid', function(items) {
-    var userid = items.userid;
-    if (userid) {
-        useToken(userid);
-    }
-    function useToken(userid) {
-      
-      chrome.storage.sync.get('twitchStreams', function(storage) {
-      });
-    }
-});
+

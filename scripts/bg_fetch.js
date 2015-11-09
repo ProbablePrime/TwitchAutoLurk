@@ -1,50 +1,70 @@
-var cache = {};
+var status = {};
 var goBackTo;
 
+
 function fetch_feed(usernames, callback) {
-  var usernamesString = "";
-  for (var i = usernames.length - 1; i >= 0; i--) {
-    usernamesString += usernames[i]+","
-  };
-  if(usernamesString !== ""){
-    $.getJSON( "https://api.twitch.tv/kraken/streams?offset=0&limit=500&channel="+usernamesString, function(response) {
-      var streams = response.streams;
-      for (var i = streams.length - 1; i >= 0; i--) {
-        var stream = streams[i];
+    var usernamesString = "";
+    for (var i = usernames.length - 1; i >= 0; i--) {
+        usernamesString += usernames[i]+",";
+        status[usernames[i]] = false;
+    }
+    if(usernamesString !== ""){
+        $.getJSON( "https://api.twitch.tv/kraken/streams?offset=0&limit=500&channel="+usernamesString).done(
+            function(response) {
+                var streams = response.streams;
+                for (var i = streams.length - 1; i >= 0; i--) {
+                    var stream = streams[i];
 
-        stream.username = stream.channel.name;
+                    stream.username = stream.channel.name;
 
-        var status = cache[stream.channel.name];
+                    prepareToLurk(stream);
 
-        if(!status){
-          prepareToLurk(stream);
+                    status[stream.username] = true;
+                }
+                if (usernames.length){
+                    var username;
+                    for (var i = usernames.length - 1; i >= 0; i--) {
+                        username = usernames[i];
+                        if(! status[usernames[i]]) {
+                            findAndCloseStreamer(username)
+                        }
+                    }
+                }
+                callback(streams);
+            }
+        );
+    }
+}
+
+function findAndCloseStreamer(username) {
+	console.log('finding and closing '+username);
+    chrome.tabs.query({url:'*://*.twitch.tv/'+username},function(tabs){
+    	console.log(tabs);
+        var tab;
+        if(tabs.length <= 0) {
+            return;
         }
-
-        cache[stream.username] = true;
-        var index = usernames.indexOf(stream.username);
-        if (index > -1) {
-          usernames.splice(index, 1);
+        for(var i=0;i < tabs.length; i++){
+            tab = tabs[i];
+            console.log(tab);
+            if(tab.muted || tab.mutedInfo.muted) {
+                closeTab(tab);
+            }
         }
-      };
-
-      if (usernames.length){
-        for (var i = usernames.length - 1; i >= 0; i--) {
-          cache[usernames[i]] = false;
-          streams.push({"username": usernames[i]})
-        };
-      }
-
-      callback(streams);
     });
-  }
+}
+
+function closeTab(tab) {
+    chrome.tabs.remove(tab.id);
 }
 
 function prepareToLurk(stream) {
     chrome.tabs.query({url:'*://*.twitch.tv/'+stream.username},function(tabs){
         if(tabs.length === 0) {
+            console.log('not in that')
             autoLurk(stream);
         } else {
-            //already on that strim
+            console.log('in that strim')
         }
     });
 }
@@ -77,41 +97,17 @@ function onRequest(request, sender, callback) {
 chrome.extension.onRequest.addListener(onRequest);
 
 
-var pollInterval = 1000 * 10; // 1 minute, in milliseconds
+var pollInterval = 1000 * 60; // 1 minute, in milliseconds
 
 function poller(){
+    console.log('polling');
     chrome.storage.sync.get('twitchStreams', function(storage){
       if(storage.twitchStreams){
+          console.log('fetching');
         fetch_feed(storage.twitchStreams, function(){})
       }
       window.setTimeout(poller, pollInterval);
     });
 }
 
-window.setTimeout(poller, pollInterval);
-
-function getRandomToken() {
-    // E.g. 8 * 32 = 256 bits token
-    var randomPool = new Uint8Array(32);
-    crypto.getRandomValues(randomPool);
-    var hex = '';
-    for (var i = 0; i < randomPool.length; ++i) {
-        hex += randomPool[i].toString(16);
-    }
-    // E.g. db18458e2782b2b77e36769c569e263a53885a9944dd0a861e5064eac16f1a
-    return hex;
-}
-
-chrome.storage.sync.get('userid', function(items) {
-    var userid = items.userid;
-    if (userid) {
-        useToken(userid);
-    } else {
-        userid = getRandomToken();
-        chrome.storage.sync.set({userid: userid}, function() {
-            useToken(userid);
-        });
-    }
-    function useToken(userid) {
-    }
-});
+poller();
